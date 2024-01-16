@@ -1,5 +1,5 @@
 import pypureclient
-from pypureclient.flasharray import FileSystem
+from pypureclient.flasharray import FileSystem, Directory, DirectoryPost
 
 
 class FlashArray:
@@ -51,6 +51,13 @@ class FlashArray:
         """Return the array managed directories by name or id"""
         r = self.get_managed_directories()
         return list(filter(lambda x: (id and x.id == id) or (name and x.name == name), r))
+
+    def create_managed_directory(self, name):
+        """Create a new managed directory"""
+        """If the managed directory needs to created in a pod, use the pod prefix in it's name"""
+        d = Directory(directory_name='zsvoboda:test1')
+        r = self._client.post_directories(directory=d)
+        return r.items if r.status_code == 200 else None
 
     def get_policies(self):
         """Return the array policies"""

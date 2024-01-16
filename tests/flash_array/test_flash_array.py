@@ -39,6 +39,9 @@ def test_get_managed_directories():
     mds = fa.get_managed_directories()
     assert (any(md.name == 'zsvoboda:root' for md in mds))
 
+def test_create_managed_directory():
+    mds = fa.create_managed_directory(name='zsvoboda:testfromapi1')
+    assert (any(md.name == 'zsvoboda:testfromapi1' for md in mds))
 
 def test_get_managed_directory():
     mds = fa.get_managed_directory(name='zsvoboda:root')
