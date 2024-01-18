@@ -117,6 +117,28 @@ def test_create_autodir_policy():
     assert (any(p.name == 'zsvoboda-pod::zsvoboda-policy-autodir' for p in ps))
 
 
+@pytest.mark.dependency(depends=['test_create_pod'])
+def test_create_and_delete_policy():
+    ps = fa.create_policy(name='zsvoboda-pod::zsvoboda-policy-autodir-g', policy_type='autodir')
+    assert (any(p.name == 'zsvoboda-pod::zsvoboda-policy-autodir-g' for p in ps))
+    fa.delete_policy(name='zsvoboda-pod::zsvoboda-policy-autodir-g')
+
+
+@pytest.mark.dependency(depends=['test_create_pod'])
+def test_create_and_delete_policy_rules():
+    ps = fa.create_policy_nfs(name='zsvoboda-pod::zsvoboda-policy-nfs-g')
+    assert (any(p.name == 'zsvoboda-pod::zsvoboda-policy-nfs-g' for p in ps))
+    psr = fa.create_policy_nfs_rule(nfs_version='nfsv4',
+                                    security='krb5p',
+                                    policy_name='zsvoboda-pod::zsvoboda-policy-nfs-g')
+    assert (any(p.nfs_version[0] == 'nfsv4' and p.policy.name == 'zsvoboda-pod::zsvoboda-policy-nfs-g'
+                and p.security[0] == 'krb5p' for p in psr))
+    rules = fa.get_policy_nfs_rules(policy_name='zsvoboda-pod::zsvoboda-policy-nfs-g')
+    first_rule = rules.next()
+    fa.delete_policy_rules(rule_name=first_rule.name, policy_name='zsvoboda-pod::zsvoboda-policy-nfs-g')
+    fa.delete_policy(name='zsvoboda-pod::zsvoboda-policy-nfs-g')
+
+
 @pytest.mark.dependency(depends=['test_create_nfs_policy', 'test_create_smb_policy', 'test_create_quota_policy',
                                  'test_create_snapshot_policy', 'test_create_autodir_policy'])
 def test_get_policy_rules():

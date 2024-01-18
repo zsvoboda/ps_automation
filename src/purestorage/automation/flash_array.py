@@ -3,7 +3,8 @@ from pypureclient.flasharray import FileSystem, Directory, Pod, Policy, PolicyRu
     PolicyRuleSmbClient, PolicyRuleSmbClientPost, PolicyRuleQuota, PolicyRuleQuotaPost, PolicyRuleSnapshot, \
     PolicyRuleSnapshotPost
 
-from purestorage.automation.rest_util import handle_response_with_items, handle_response_with_value, handle_response
+from purestorage.automation.rest_util import handle_response_with_items, handle_response_with_value, handle_response, \
+    FlashArrayError
 
 
 class FlashArray:
@@ -220,6 +221,79 @@ class FlashArray:
             policy_ids=[policy_id] if policy_id else None)
         return handle_response_with_items(r)
 
+    def delete_policy_rules(self, rule_name=None, policy_name=None, policy_id=None):
+        """ Delete the array policy rules """
+        p = self.get_policy(id=policy_id if policy_id else None, name=policy_name if policy_name else None)
+        if p:
+            match p[0].policy_type:
+                case 'nfs':
+                    return self.delete_policy_nfs_rules(rule_name, policy_name, policy_id)
+                case 'smb':
+                    return self.delete_policy_smb_rules(rule_name, policy_name, policy_id)
+                case 'quota':
+                    return self.delete_policy_quota_rules(rule_name, policy_name, policy_id)
+                case 'snapshot':
+                    return self.delete_policy_snapshot_rules(rule_name, policy_name, policy_id)
+                case _:
+                    raise FlashArrayError(f"Policy type {p[0].policy_type}' is not supported yet.")
+        else:
+            raise FlashArrayError(f"Policy with name='{policy_name}' or id = '{policy_id}' not found.")
+
+    def create_policy_nfs(self, name, enabled=True):
+        """Create a new NFS policy"""
+        p = Policy(name=name, policy_type='nfs', enabled=enabled)
+        r = self._client.post_policies_nfs(policy=p, names=[name])
+        return handle_response_with_items(r)
+
+    def delete_policy_nfs(self, name=None, id=None):
+        """Delete NFS policy"""
+        r = self._client.delete_policies_nfs(names=[name] if name else None, ids=[id] if id else None)
+        return handle_response_with_items(r)
+
+    def create_policy_smb(self, name, enabled=True):
+        """Create a new SMB policy"""
+        p = Policy(name=name, policy_type='smb', enabled=enabled)
+        r = self._client.post_policies_smb(policy=p, names=[name])
+        return handle_response_with_items(r)
+
+    def delete_policy_smb(self, name=None, id=None):
+        """Delete SMB policy"""
+        r = self._client.delete_policies_smb(names=[name] if name else None, ids=[id] if id else None)
+        return handle_response_with_items(r)
+
+    def create_policy_quota(self, name, enabled=True):
+        """Create a new quota policy"""
+        p = Policy(name=name, policy_type='quota', enabled=enabled)
+        r = self._client.post_policies_quota(policy=p, names=[name])
+        return handle_response_with_items(r)
+
+    def delete_policy_quota(self, name=None, id=None):
+        """Delete quota policy"""
+        r = self._client.delete_policies_quota(names=[name] if name else None, ids=[id] if id else None)
+        return handle_response_with_items(r)
+
+    def create_policy_snapshot(self, name, enabled=True):
+        """Create a new snapshot policy"""
+        p = Policy(name=name, policy_type='snapshot', enabled=enabled)
+        r = self._client.post_policies_snapshot(policy=p, names=[name])
+        return handle_response_with_items(r)
+
+    def delete_policy_snapshot(self, name=None, id=None):
+        """Delete snapshot policy"""
+        r = self._client.delete_policies_snapshot(names=[name] if name else None, ids=[id] if id else None)
+        return handle_response_with_items(r)
+
+    def create_policy_autodir(self, name, enabled=True):
+        """Create a new autodir policy"""
+        p = Policy(name=name, policy_type='autodir', enabled=enabled)
+        r = self._client.post_policies_autodir(policy=p, names=[name])
+        return handle_response_with_items(r)
+
+    def delete_policy_autodir(self, name=None, id=None):
+        """Delete autodir policy"""
+        r = self._client.delete_policies_autodir(names=[name] if name else None, ids=[id] if id else None)
+        return handle_response_with_items(r)
+
     def get_policies(self):
         """Return the array policies"""
         r = self._client.get_policies()
@@ -232,62 +306,40 @@ class FlashArray:
             handle_response_with_value(r, list(filter(lambda x: (id and x.id == id)
                                                                 or (name and x.name == name), r.items))))
 
-    def create_policy_nfs(self, name, enabled=True):
-        """Create a new NFS policy"""
-        p = Policy(name=name, policy_type='nfs', enabled=enabled)
-        r = self._client.post_policies_nfs(policy=p, names=[name])
-        return handle_response_with_items(r)
+    def create_policy(self, name, policy_type, enabled=True):
+        match policy_type:
+            case 'nfs':
+                return self.create_policy_nfs(name, enabled)
+            case 'smb':
+                return self.create_policy_smb(name, enabled)
+            case 'quota':
+                return self.create_policy_quota(name, enabled)
+            case 'snapshot':
+                return self.create_policy_snapshot(name, enabled)
+            case 'autodir':
+                return self.create_policy_autodir(name, enabled)
+            case _:
+                raise FlashArrayError(f"Policy type {policy_type}' is not supported yet.")
 
-    def delete_policy_nfs(self, name):
-        """Delete NFS policy"""
-        r = self._client.delete_policies_nfs(names=[name])
-        return handle_response_with_items(r)
-
-    def create_policy_smb(self, name, enabled=True):
-        """Create a new SMB policy"""
-        p = Policy(name=name, policy_type='smb', enabled=enabled)
-        r = self._client.post_policies_smb(policy=p, names=[name])
-        return handle_response_with_items(r)
-
-    def delete_policy_smb(self, name):
-        """Delete SMB policy"""
-        r = self._client.delete_policies_smb(names=[name])
-        return handle_response_with_items(r)
-
-    def create_policy_quota(self, name, enabled=True):
-        """Create a new quota policy"""
-        p = Policy(name=name, policy_type='quota', enabled=enabled)
-        r = self._client.post_policies_quota(policy=p, names=[name])
-        return handle_response_with_items(r)
-
-    def delete_policy_quota(self, name):
-        """Delete quota policy"""
-        r = self._client.delete_policies_quota(names=[name])
-        return handle_response_with_items(r)
-
-    def create_policy_snapshot(self, name, enabled=True):
-        """Create a new snapshot policy"""
-        p = Policy(name=name, policy_type='snapshot', enabled=enabled)
-        r = self._client.post_policies_snapshot(policy=p, names=[name])
-        return handle_response_with_items(r)
-
-    def delete_policy_snapshot(self, name):
-        """Delete snapshot policy"""
-        r = self._client.delete_policies_snapshot(names=[name])
-        return handle_response_with_items(r)
-
-
-    def create_policy_autodir(self, name, enabled=True):
-        """Create a new autodir policy"""
-        p = Policy(name=name, policy_type='autodir', enabled=enabled)
-        r = self._client.post_policies_autodir(policy=p, names=[name])
-        return handle_response_with_items(r)
-
-    def delete_policy_autodir(self, name):
-        """Delete autodir policy"""
-        r = self._client.delete_policies_autodir(names=[name])
-        return handle_response_with_items(r)
-
+    def delete_policy(self, id=None, name=None):
+        """Delete policy"""
+        p = self.get_policy(id=id if id else None, name=name if name else None)
+        if p:
+            match p[0].policy_type:
+                case 'nfs':
+                    return self.delete_policy_nfs(name)
+                case 'smb':
+                    return self.delete_policy_smb(name)
+                case 'quota':
+                    return self.delete_policy_quota(name)
+                case 'snapshot':
+                    return self.delete_policy_snapshot(name)
+                case 'autodir':
+                    return self.delete_policy_autodir(name)
+                case _:
+                    raise FlashArrayError(f"Policy type {p[0].policy_type}' is not supported yet.")
+        else:
+            raise FlashArrayError(f"Policy with name='{name}' or id = '{id}' not found.")
 
     def get_directory_exports(self, directory_name=None, directory_id=None, policy_name=None, policy_id=None):
         """Return the array directory exports"""
