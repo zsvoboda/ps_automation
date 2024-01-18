@@ -1,6 +1,7 @@
 import pypureclient
 from pypureclient.flasharray import FileSystem, Directory, Pod, Policy, PolicyRuleNfsClient, PolicyRuleNfsClientPost, \
-    PolicyRuleSmbClient, PolicyRuleSmbClientPost, PolicyRuleQuota, PolicyRuleQuotaPost
+    PolicyRuleSmbClient, PolicyRuleSmbClientPost, PolicyRuleQuota, PolicyRuleQuotaPost, PolicyRuleSnapshot, \
+    PolicyRuleSnapshotPost
 
 from purestorage.automation.rest_util import handle_response_with_items, handle_response_with_value, handle_response
 
@@ -36,15 +37,15 @@ class FlashArray:
         r = self._client.post_pods(pod=p, names=[name])
         return handle_response_with_items(r)
 
-    def destroy_pod(self, name):
+    def destroy_pod(self, name, destroy_contents=False):
         """Destroy a pod"""
         p = Pod(destroyed=True)
-        r = self._client.patch_pods(pod=p, destroy_contents=True, names=[name])
+        r = self._client.patch_pods(pod=p, destroy_contents=destroy_contents, names=[name])
         return handle_response_with_items(r)
 
-    def eradicate_pod(self, name):
+    def eradicate_pod(self, name, eradicate_contents=False):
         """Eradicate a pod"""
-        r = self._client.delete_pods(names=[name], eradicate_contents=True)
+        r = self._client.delete_pods(names=[name], eradicate_contents=eradicate_contents)
         return handle_response(r)
 
     def get_file_systems(self):
@@ -120,9 +121,18 @@ class FlashArray:
             security=security if security else None,
             anonuid=anonuid if anonuid else None,
             anongid=anongid if anongid else None)
-        r = self._client.post_policies_nfs_client_rules(rules=PolicyRuleNfsClientPost(rules=[rule]),
-                                                        policy_names=[policy_name] if policy_name else None,
-                                                        policy_ids=[policy_id] if policy_id else None)
+        r = self._client.post_policies_nfs_client_rules(
+            rules=PolicyRuleNfsClientPost(rules=[rule]),
+            policy_names=[policy_name] if policy_name else None,
+            policy_ids=[policy_id] if policy_id else None)
+        return handle_response_with_items(r)
+
+    def delete_policy_nfs_rules(self, rule_name=None, policy_name=None, policy_id=None):
+        """Delete the array NFS policy rules"""
+        r = self._client.delete_policies_nfs_client_rules(
+            names=[rule_name] if rule_name else None,
+            policy_names=[policy_name] if policy_name else None,
+            policy_ids=[policy_id] if policy_id else None)
         return handle_response_with_items(r)
 
     def get_policy_smb_rules(self, policy_name=None, policy_id=None):
@@ -144,6 +154,14 @@ class FlashArray:
                                                         policy_ids=[policy_id] if policy_id else None)
         return handle_response_with_items(r)
 
+    def delete_policy_smb_rules(self, rule_name=None, policy_name=None, policy_id=None):
+        """Delete the array SMB policy rules"""
+        r = self._client.delete_policies_smb_client_rules(
+            names=[rule_name] if rule_name else None,
+            policy_names=[policy_name] if policy_name else None,
+            policy_ids=[policy_id] if policy_id else None)
+        return handle_response_with_items(r)
+
     def get_policy_quota_rules(self, policy_name=None, policy_id=None):
         """Return the array quota policy rules"""
         r = self._client.get_policies_quota_rules(policy_names=[policy_name] if policy_name else None,
@@ -160,14 +178,46 @@ class FlashArray:
             notifications=notifications if notifications else None)
 
         r = self._client.post_policies_quota_rules(rules=PolicyRuleQuotaPost(rules=[rule]),
-                                                          policy_names=[policy_name] if policy_name else None,
-                                                          policy_ids=[policy_id] if policy_id else None)
+                                                   policy_names=[policy_name] if policy_name else None,
+                                                   policy_ids=[policy_id] if policy_id else None)
+        return handle_response_with_items(r)
+
+    def delete_policy_quota_rules(self, rule_name=None, policy_name=None, policy_id=None):
+        """Delete the array quota policy rules"""
+        r = self._client.delete_policies_quota_rules(
+            names=[rule_name] if rule_name else None,
+            policy_names=[policy_name] if policy_name else None,
+            policy_ids=[policy_id] if policy_id else None)
         return handle_response_with_items(r)
 
     def get_policy_snapshot_rules(self, policy_name=None, policy_id=None):
         """Return the array snapshot policy rules"""
         r = self._client.get_policies_snapshot_rules(policy_names=[policy_name] if policy_name else None,
                                                      policy_ids=[policy_id] if policy_id else None)
+        return handle_response_with_items(r)
+
+    def create_policy_snapshot_rule(self, client_name, every, keep_for, at=None, suffix=None, rule_name=None,
+                                    policy_name=None, policy_id=None):
+        """Create a new snapshot policy rule"""
+        rule = PolicyRuleSnapshot(
+            name=rule_name if rule_name else None,
+            at=at if at else None,
+            client_name=client_name if client_name else None,
+            every=every if every else None,
+            keep_for=keep_for if keep_for else None,
+            suffix=suffix if suffix else None)
+
+        r = self._client.post_policies_snapshot_rules(rules=PolicyRuleSnapshotPost(rules=[rule]),
+                                                      policy_names=[policy_name] if policy_name else None,
+                                                      policy_ids=[policy_id] if policy_id else None)
+        return handle_response_with_items(r)
+
+    def delete_policy_snapshot_rules(self, rule_name=None, policy_name=None, policy_id=None):
+        """Delete the array snapshot policy rules"""
+        r = self._client.delete_policies_snapshot_rules(
+            names=[rule_name] if rule_name else None,
+            policy_names=[policy_name] if policy_name else None,
+            policy_ids=[policy_id] if policy_id else None)
         return handle_response_with_items(r)
 
     def get_policies(self):
@@ -188,10 +238,20 @@ class FlashArray:
         r = self._client.post_policies_nfs(policy=p, names=[name])
         return handle_response_with_items(r)
 
+    def delete_policy_nfs(self, name):
+        """Delete NFS policy"""
+        r = self._client.delete_policies_nfs(names=[name])
+        return handle_response_with_items(r)
+
     def create_policy_smb(self, name, enabled=True):
         """Create a new SMB policy"""
         p = Policy(name=name, policy_type='smb', enabled=enabled)
         r = self._client.post_policies_smb(policy=p, names=[name])
+        return handle_response_with_items(r)
+
+    def delete_policy_smb(self, name):
+        """Delete SMB policy"""
+        r = self._client.delete_policies_smb(names=[name])
         return handle_response_with_items(r)
 
     def create_policy_quota(self, name, enabled=True):
@@ -200,11 +260,34 @@ class FlashArray:
         r = self._client.post_policies_quota(policy=p, names=[name])
         return handle_response_with_items(r)
 
+    def delete_policy_quota(self, name):
+        """Delete quota policy"""
+        r = self._client.delete_policies_quota(names=[name])
+        return handle_response_with_items(r)
+
     def create_policy_snapshot(self, name, enabled=True):
         """Create a new snapshot policy"""
         p = Policy(name=name, policy_type='snapshot', enabled=enabled)
         r = self._client.post_policies_snapshot(policy=p, names=[name])
         return handle_response_with_items(r)
+
+    def delete_policy_snapshot(self, name):
+        """Delete snapshot policy"""
+        r = self._client.delete_policies_snapshot(names=[name])
+        return handle_response_with_items(r)
+
+
+    def create_policy_autodir(self, name, enabled=True):
+        """Create a new autodir policy"""
+        p = Policy(name=name, policy_type='autodir', enabled=enabled)
+        r = self._client.post_policies_autodir(policy=p, names=[name])
+        return handle_response_with_items(r)
+
+    def delete_policy_autodir(self, name):
+        """Delete autodir policy"""
+        r = self._client.delete_policies_autodir(names=[name])
+        return handle_response_with_items(r)
+
 
     def get_directory_exports(self, directory_name=None, directory_id=None, policy_name=None, policy_id=None):
         """Return the array directory exports"""
