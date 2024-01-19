@@ -1,4 +1,4 @@
-from purestorage.automation.flash_array import FlashArray
+from purestorage.fa.flash_array import FlashArray
 
 from enum import Enum
 

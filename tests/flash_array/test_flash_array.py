@@ -1,8 +1,7 @@
 import os
-
 import pytest
 
-from purestorage.automation import (FlashArray)
+from purestorage import FlashArray
 
 FA_API_TOKEN = os.environ.get('FA_API_TOKEN')
 FA_ARRAY_HOST = os.environ.get('FA_ARRAY_HOST')
@@ -121,7 +120,7 @@ def test_create_autodir_policy():
 def test_create_and_delete_policy():
     ps = fa.create_policy(name='zsvoboda-pod::zsvoboda-policy-autodir-g', policy_type='autodir')
     assert (any(p.name == 'zsvoboda-pod::zsvoboda-policy-autodir-g' for p in ps))
-    fa.delete_policy(name='zsvoboda-pod::zsvoboda-policy-autodir-g')
+    fa.delete_policy(policy_name='zsvoboda-pod::zsvoboda-policy-autodir-g')
 
 
 @pytest.mark.dependency(depends=['test_create_pod'])
@@ -136,7 +135,7 @@ def test_create_and_delete_policy_rules():
     rules = fa.get_policy_nfs_rules(policy_name='zsvoboda-pod::zsvoboda-policy-nfs-g')
     first_rule = rules.next()
     fa.delete_policy_rules(rule_name=first_rule.name, policy_name='zsvoboda-pod::zsvoboda-policy-nfs-g')
-    fa.delete_policy(name='zsvoboda-pod::zsvoboda-policy-nfs-g')
+    fa.delete_policy(policy_name='zsvoboda-pod::zsvoboda-policy-nfs-g')
 
 
 @pytest.mark.dependency(depends=['test_create_nfs_policy', 'test_create_smb_policy', 'test_create_quota_policy',
@@ -185,24 +184,128 @@ def test_get_policies():
 
 @pytest.mark.dependency(depends=['test_create_nfs_policy'])
 def test_get_policy():
-    ps = fa.get_policy(name='zsvoboda-pod::zsvoboda-policy-nfs')
+    ps = fa.get_policy(policy_name='zsvoboda-pod::zsvoboda-policy-nfs')
     assert (any(p.name == 'zsvoboda-pod::zsvoboda-policy-nfs' for p in ps))
 
 
 @pytest.mark.dependency(depends=['test_create_managed_directory', 'test_create_nfs_policy'])
+def test_export_managed_directory_nfs():
+    ps = fa.export_managed_directory_nfs('zsvoboda-export-nfs',
+                                         policy_name='zsvoboda-pod::zsvoboda-policy-nfs',
+                                         managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_create_managed_directory', 'test_create_smb_policy'])
+def test_export_managed_directory_smb():
+    ps = fa.export_managed_directory_smb('zsvoboda-export-smb',
+                                         policy_name='zsvoboda-pod::zsvoboda-policy-smb',
+                                         managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_create_managed_directory', 'test_create_quota_policy'])
+def test_add_managed_directory_quota():
+    ps = fa.add_managed_directory_quota(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md',
+                                        policy_name='zsvoboda-pod::zsvoboda-policy-quota')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_create_managed_directory', 'test_create_snapshot_policy'])
+def test_add_managed_directory_snapshot():
+    ps = fa.add_managed_directory_snapshot(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md',
+                                           policy_name='zsvoboda-pod::zsvoboda-policy-snapshot')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_create_managed_directory', 'test_create_autodir_policy'])
+def test_add_managed_directory_autodir():
+    ps = fa.add_managed_directory_autodir(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md',
+                                          policy_name='zsvoboda-pod::zsvoboda-policy-autodir')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_export_managed_directory_nfs'])
+def test_get_managed_directory_policies_nfs():
+    ps = fa.get_managed_directory_policies_nfs(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' and
+                p.export_name == 'zsvoboda-export-nfs' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_export_managed_directory_smb'])
+def test_get_managed_directory_policies_smb():
+    ps = fa.get_managed_directory_policies_smb(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' and
+                p.export_name == 'zsvoboda-export-smb' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_add_managed_directory_quota'])
+def test_get_managed_directory_policies_quota():
+    ps = fa.get_managed_directory_policies_quota(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_add_managed_directory_snapshot'])
+def test_get_managed_directory_policies_snapshot():
+    ps = fa.get_managed_directory_policies_snapshot(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_add_managed_directory_autodir'])
+def test_get_managed_directory_policies_autodir():
+    ps = fa.get_managed_directory_policies_autodir(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+def test_get_managed_directory_policies():
+    ps = fa.get_managed_directory_policies(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md')
+    assert (any(p.member.name == 'zsvoboda-pod::zsvoboda-fs:zsvoboda-md' for p in ps))
+
+
+@pytest.mark.dependency(depends=['test_export_managed_directory_nfs'])
 def test_get_directory_exports():
     des = fa.get_directory_exports()
-    assert (any(de.export_name == 'zsvoboda_krb5p' for de in des))
+    assert (any(de.export_name == 'zsvoboda-export-nfs' for de in des))
 
 
-@pytest.mark.dependency(depends=['test_create_managed_directory', 'test_create_nfs_policy'])
+@pytest.mark.dependency(depends=['test_export_managed_directory_nfs'])
 def test_get_directory_export():
-    des = fa.get_directory_export(name='zsvoboda_krb5p')
-    assert (any(de.export_name == 'zsvoboda_krb5p' for de in des))
+    des = fa.get_directory_export(name='zsvoboda-export-nfs')
+    assert (any(de.export_name == 'zsvoboda-export-nfs' for de in des))
+
+
+@pytest.mark.dependency(depends=['test_export_managed_directory_nfs', 'test_get_directory_exports',
+                                 'test_get_directory_export', 'test_get_managed_directory_policies_nfs'])
+def test_delete_nfs_export():
+    fa.delete_export('zsvoboda-export-nfs')
+
+
+@pytest.mark.dependency(depends=['test_export_managed_directory_smb', 'test_get_directory_exports',
+                                 'test_get_directory_export', 'test_get_managed_directory_policies_smb'])
+def test_delete_smb_export():
+    fa.delete_export('zsvoboda-export-smb')
+
+
+@pytest.mark.dependency(depends=['test_add_managed_directory_quota', 'test_get_managed_directory_policies_quota'])
+def test_remove_managed_directory_quota():
+    fa.remove_managed_directory_quota_policy(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md',
+                                             policy_name='zsvoboda-pod::zsvoboda-policy-quota')
+
+
+@pytest.mark.dependency(depends=['test_add_managed_directory_snapshot', 'test_get_managed_directory_policies_snapshot'])
+def test_remove_managed_directory_snapshot():
+    fa.remove_managed_directory_snapshot_policy(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md',
+                                                policy_name='zsvoboda-pod::zsvoboda-policy-snapshot')
+
+
+@pytest.mark.dependency(depends=['test_add_managed_directory_autodir', 'test_get_managed_directory_policies_autodir'])
+def test_remove_managed_directory_autodir():
+    fa.remove_managed_directory_autodir_policy(managed_directory_name='zsvoboda-pod::zsvoboda-fs:zsvoboda-md',
+                                               policy_name='zsvoboda-pod::zsvoboda-policy-autodir')
 
 
 @pytest.mark.dependency(depends=['test_get_policies', 'test_get_policy_rules', 'test_get_policy',
-                                 'test_get_directory_exports', 'test_get_directory_export'])
+                                 'test_get_directory_exports', 'test_get_directory_export', 'test_delete_nfs_export'])
 def test_delete_nfs_policy_rule():
     rules = fa.get_policy_nfs_rules(policy_name='zsvoboda-pod::zsvoboda-policy-nfs')
     first_rule = rules.next()
@@ -210,7 +313,7 @@ def test_delete_nfs_policy_rule():
 
 
 @pytest.mark.dependency(depends=['test_get_policies', 'test_get_policy_rules', 'test_get_policy',
-                                 'test_get_directory_exports', 'test_get_directory_export'])
+                                 'test_get_directory_exports', 'test_get_directory_export', 'test_delete_smb_export'])
 def test_delete_smb_policy_rule():
     rules = fa.get_policy_smb_rules(policy_name='zsvoboda-pod::zsvoboda-policy-smb')
     first_rule = rules.next()
@@ -218,7 +321,8 @@ def test_delete_smb_policy_rule():
 
 
 @pytest.mark.dependency(depends=['test_get_policies', 'test_get_policy_rules', 'test_get_policy',
-                                 'test_get_directory_exports', 'test_get_directory_export'])
+                                 'test_get_directory_exports', 'test_get_directory_export',
+                                 'test_remove_managed_directory_quota'])
 def test_delete_quota_policy_rule():
     rules = fa.get_policy_quota_rules(policy_name='zsvoboda-pod::zsvoboda-policy-quota')
     first_rule = rules.next()
@@ -226,7 +330,8 @@ def test_delete_quota_policy_rule():
 
 
 @pytest.mark.dependency(depends=['test_get_policies', 'test_get_policy_rules', 'test_get_policy',
-                                 'test_get_directory_exports', 'test_get_directory_export'])
+                                 'test_get_directory_exports', 'test_get_directory_export',
+                                 'test_remove_managed_directory_snapshot'])
 def test_delete_snapshot_policy_rule():
     rules = fa.get_policy_snapshot_rules(policy_name='zsvoboda-pod::zsvoboda-policy-snapshot')
     first_rule = rules.next()
@@ -254,7 +359,8 @@ def test_delete_snapshot_policy():
 
 
 @pytest.mark.dependency(depends=['test_get_policies', 'test_get_policy_rules', 'test_get_policy',
-                                 'test_get_directory_exports', 'test_get_directory_export'])
+                                 'test_get_directory_exports', 'test_get_directory_export',
+                                 'test_remove_managed_directory_autodir'])
 def test_delete_autodir_policy():
     fa.delete_policy_autodir(name='zsvoboda-pod::zsvoboda-policy-autodir')
 
